@@ -87,6 +87,14 @@ export async function getDiff(
   oid1: string,
   oid2: string
 ): Promise<DiffResult> {
+  // 'empty' sentinel = initial commit with no parent, diff against nothing
+  if (oid1 === 'empty') {
+    const files2 = await listTreeFiles(skillPath, oid2)
+    const mainFile = files2.find((f) => f.toUpperCase() === 'SKILL.MD') || files2[0] || 'SKILL.md'
+    const newContent = await readBlobSafe(skillPath, oid2, mainFile)
+    return { oldContent: '', newContent, hunks: [] }
+  }
+
   // Collect all files from both commits
   const [files1, files2] = await Promise.all([
     listTreeFiles(skillPath, oid1),

@@ -22,12 +22,12 @@ export default function VersionHistory({ skillPath, onRollback }: Props) {
   }, [skillPath])
 
   const handleShowDiff = async (oid: string) => {
-    if (commits.length < 2) return
     const idx = commits.findIndex((c) => c.oid === oid)
-    const prevOid = commits[idx + 1]?.oid
-    if (!prevOid) return
+    // Compare this commit against its parent (older commit = higher idx)
+    // If no parent (initial commit), compare against empty via sentinel 'empty'
+    const parentOid = commits[idx + 1]?.oid ?? 'empty'
     setIsLoadingDiff(true)
-    const res = await window.quiver.git.diff(skillPath, prevOid, oid)
+    const res = await window.quiver.git.diff(skillPath, parentOid, oid)
     setIsLoadingDiff(false)
     if (res.data) setDiff(res.data as DiffResult)
   }
@@ -101,7 +101,7 @@ export default function VersionHistory({ skillPath, onRollback }: Props) {
         ))}
       </div>
 
-      {selected && selected !== commits[0]?.oid && (
+      {selected && (
         <div className="mt-2 flex gap-1">
           <button
             onClick={() => handleShowDiff(selected)}
@@ -110,13 +110,15 @@ export default function VersionHistory({ skillPath, onRollback }: Props) {
           >
             {isLoadingDiff ? 'Loading...' : 'View Diff'}
           </button>
-          <button
-            onClick={handleRollback}
-            disabled={isRollingBack}
-            className="flex-1 text-xs py-1.5 rounded-md bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors disabled:opacity-40"
-          >
-            {isRollingBack ? 'Rolling back...' : '↩ Rollback'}
-          </button>
+          {selected !== commits[0]?.oid && (
+            <button
+              onClick={handleRollback}
+              disabled={isRollingBack}
+              className="flex-1 text-xs py-1.5 rounded-md bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors disabled:opacity-40"
+            >
+              {isRollingBack ? 'Rolling back...' : '↩ Rollback'}
+            </button>
+          )}
         </div>
       )}
 
