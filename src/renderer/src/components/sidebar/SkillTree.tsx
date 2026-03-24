@@ -3,6 +3,7 @@ import { useUiStore } from '../../stores/ui-store'
 import SearchBar from './SearchBar'
 import type { Skill } from '../../../../types/skill'
 
+
 async function handleAddProject(
   setSkills: (skills: Skill[]) => void,
   setLoading: (v: boolean) => void
@@ -81,7 +82,7 @@ function GroupSection({ label, skills }: { label: string; skills: Skill[] }) {
 
 export default function SkillTree() {
   const { filteredSkills, isLoading, setSkills, setLoading } = useSkillStore()
-  const { activePanel, setActivePanel } = useUiStore()
+  const { activePanel, setActivePanel, setShowImportDialog } = useUiStore()
 
   const skills = filteredSkills()
   const globalSkills = skills.filter((s) => s.scope === 'global')
@@ -135,13 +136,22 @@ export default function SkillTree() {
             📊
           </button>
         </div>
-        <button
-          onClick={() => handleAddProject(setSkills, setLoading)}
-          className="w-full text-xs py-1.5 rounded-md text-muted-foreground hover:bg-secondary transition-colors"
-          title="Add a project folder to scan its .claude/skills/"
-        >
-          + Add Project
-        </button>
+        <div className="flex gap-1">
+          <button
+            onClick={() => handleAddProject(setSkills, setLoading)}
+            className="flex-1 text-xs py-1.5 rounded-md text-muted-foreground hover:bg-secondary transition-colors"
+            title="Add a project folder to scan its .claude/skills/"
+          >
+            + Add Project
+          </button>
+          <button
+            onClick={() => setShowImportDialog(true)}
+            className="flex-1 text-xs py-1.5 rounded-md text-muted-foreground hover:bg-secondary transition-colors"
+            title="Import a .quiver skill package"
+          >
+            Import
+          </button>
+        </div>
       </div>
     </div>
   )

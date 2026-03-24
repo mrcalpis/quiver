@@ -1,4 +1,5 @@
 import type { Skill } from '../../../../types/skill'
+import { useUiStore } from '../../stores/ui-store'
 
 const fileTypeIcon: Record<string, string> = {
   main: '📄',
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export default function SkillInfo({ skill }: Props) {
+  const { setShowExportDialog } = useUiStore()
   const lastModified = new Date(skill.lastModified)
   const folders = new Set(
     skill.files
@@ -57,6 +59,16 @@ export default function SkillInfo({ skill }: Props) {
           <span className="text-muted-foreground">Modified</span>
           <span>{lastModified.toLocaleDateString()}</span>
         </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setShowExportDialog(true)}
+          className="flex-1 text-xs py-1.5 rounded-md bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Export .quiver
+        </button>
       </div>
 
       {/* File structure */}
