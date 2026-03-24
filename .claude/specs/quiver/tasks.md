@@ -1,0 +1,246 @@
+# Quiver — Task List
+
+## Implementation Tasks
+
+- [ ] 1. **Project Initialization**
+    - [ ] 1.1. Initialize Electron + Vite + React + TypeScript project
+        - *Goal*: Working skeleton app that opens a window
+        - *Details*: Use `electron-vite` template, configure tsconfig, add `.gitignore`
+        - *Files*: `package.json`, `electron.vite.config.ts`, `tsconfig.json`, `src/main/index.ts`, `src/preload/index.ts`, `src/renderer/src/main.tsx`
+        - *Requirements*: NFR-2 (cross-platform)
+    - [ ] 1.2. Install and configure Tailwind CSS + shadcn/ui
+        - *Goal*: UI component library ready to use
+        - *Details*: `tailwindcss`, `@shadcn/ui` init, add base components (Button, Dialog, Badge, ScrollArea, Separator, Tooltip)
+        - *Files*: `tailwind.config.js`, `src/renderer/src/globals.css`
+        - *Requirements*: NFR-4
+    - [ ] 1.3. Set up Zustand stores
+        - *Goal*: State management ready
+        - *Details*: Create `skill-store.ts` (skills list, selected skill, projects) and `ui-store.ts` (active panel, view mode, search query)
+        - *Files*: `src/renderer/src/stores/skill-store.ts`, `src/renderer/src/stores/ui-store.ts`
+        - *Requirements*: NFR-1
+    - [ ] 1.4. Define TypeScript types
+        - *Goal*: Shared types across main and renderer
+        - *Details*: `Skill`, `SkillFile`, `QualityResult`, `QualityCheck`, `SkillCommit`, `UsageStat`, `CreateSkillOptions`
+        - *Files*: `src/types/skill.ts`, `src/types/git.ts`
+        - *Requirements*: All
+
+- [ ] 2. **Skill Scanner (Main Process)**
+    - [ ] 2.1. Implement frontmatter parser
+        - *Goal*: Parse YAML frontmatter from skill `.md` files
+        - *Details*: Use `js-yaml`, extract `name`, `description`, `triggers`, `metadata` fields. Handle missing frontmatter gracefully.
+        - *Files*: `src/main/skill-scanner.ts`
+        - *Requirements*: US-1
+    - [ ] 2.2. Implement global skill scanner
+        - *Goal*: Scan `~/.claude/skills/` and return Skill array
+        - *Details*: Skip `_shared/`, `learned/` folders. Each folder with any `.md` file is a skill. Classify files by subfolder type.
+        - *Files*: `src/main/skill-scanner.ts`
+        - *Requirements*: US-1
+    - [ ] 2.3. Implement project skill scanner
+        - *Goal*: Scan a given project path for `.claude/skills/`
+        - *Details*: Accept project root path, find `.claude/skills/`, apply same scanning logic. Store project paths in `~/.quiver/config.json`.
+        - *Files*: `src/main/skill-scanner.ts`
+        - *Requirements*: US-1, US-7
+    - [ ] 2.4. Register IPC handlers for skills
+        - *Goal*: Renderer can invoke skill scanning via IPC
+        - *Details*: `skills:scanAll`, `skills:addProject`, `skills:removeProject` handlers in `ipc-handlers.ts`
+        - *Files*: `src/main/ipc-handlers.ts`
+        - *Requirements*: US-1
+
+- [ ] 3. **Skill Tree UI (Renderer)**
+    - [ ] 3.1. Build SkillTree sidebar component
+        - *Goal*: Left panel showing grouped skill list
+        - *Details*: Groups: 📦 Global, 📁 {ProjectName}. Each skill shows name + quality badge. Click to select.
+        - *Files*: `src/renderer/src/components/sidebar/SkillTree.tsx`, `SkillTreeItem.tsx`
+        - *Requirements*: US-1
+    - [ ] 3.2. Build SearchBar component
+        - *Goal*: Filter skills by name/description in real-time
+        - *Details*: Controlled input, filters `skill-store` skills, debounced 150ms
+        - *Files*: `src/renderer/src/components/sidebar/SearchBar.tsx`
+        - *Requirements*: US-1
+    - [ ] 3.3. Build AppLayout (3-column)
+        - *Goal*: Main shell layout
+        - *Details*: Left 240px sidebar, center flex, right 280px panel. Resizable dividers.
+        - *Files*: `src/renderer/src/components/layout/AppLayout.tsx`, `src/renderer/src/App.tsx`
+        - *Requirements*: US-1
+
+- [ ] 4. **File Reading + Skill Detail Panel**
+    - [ ] 4.1. Implement file read/write IPC handlers
+        - *Goal*: Main process can read/write skill files
+        - *Details*: `files:read`, `files:write` handlers with path validation (must be within known skill dirs)
+        - *Files*: `src/main/ipc-handlers.ts`
+        - *Requirements*: US-4
+    - [ ] 4.2. Build SkillInfo component
+        - *Goal*: Display skill metadata in right panel
+        - *Details*: Shows: name, scope badge, description, file count, last modified, folder structure (FileTree)
+        - *Files*: `src/renderer/src/components/detail/SkillInfo.tsx`, `FileTree.tsx`
+        - *Requirements*: US-1
+
+- [ ] 5. **Monaco Editor**
+    - [ ] 5.1. Integrate Monaco Editor
+        - *Goal*: Inline markdown editing
+        - *Details*: `@monaco-editor/react`, language: `markdown`, dark theme matching app, load selected skill's SKILL.md content
+        - *Files*: `src/renderer/src/components/editor/SkillEditor.tsx`
+        - *Requirements*: US-4
+    - [ ] 5.2. Build MarkdownPreview component
+        - *Goal*: Split-view markdown preview
+        - *Details*: `react-markdown` + `remark-gfm`, toggle between editor-only / split / preview-only modes
+        - *Files*: `src/renderer/src/components/editor/MarkdownPreview.tsx`
+        - *Requirements*: US-4
+    - [ ] 5.3. Implement save + unsaved change tracking
+        - *Goal*: Save file and track dirty state
+        - *Details*: Cmd+S / Ctrl+S shortcut, dirty indicator in tab, warn on close without save
+        - *Files*: `src/renderer/src/components/editor/SkillEditor.tsx`
+        - *Requirements*: US-4
+    - [ ] 5.4. Implement file watcher + reload prompt
+        - *Goal*: Detect external file changes
+        - *Details*: chokidar watches all skill dirs, emits `skill:changed` IPC event, renderer shows reload prompt
+        - *Files*: `src/main/file-watcher.ts`
+        - *Requirements*: US-4
+
+- [ ] 6. **Version Control (isomorphic-git)**
+    - [ ] 6.1. Implement git-manager: init + commit
+        - *Goal*: Initialize git repo in skill folder and create commits
+        - *Details*: `git init` on first access, `git add -A`, `git commit -m`. Author: `Quiver <quiver@local>`.
+        - *Files*: `src/main/git-manager.ts`
+        - *Requirements*: US-2
+    - [ ] 6.2. Implement git-manager: history + diff
+        - *Goal*: Read commit history and show diffs
+        - *Details*: `git log`, `git show` for diff between two OIDs. Return structured `SkillCommit[]`.
+        - *Files*: `src/main/git-manager.ts`
+        - *Requirements*: US-2
+    - [ ] 6.3. Implement git-manager: rollback
+        - *Goal*: Restore skill files to a past commit
+        - *Details*: Copy current state to `~/.quiver/trash/` backup, then `git checkout <oid> -- .`
+        - *Files*: `src/main/git-manager.ts`
+        - *Requirements*: US-2
+    - [ ] 6.4. Register git IPC handlers
+        - *Goal*: Renderer can call git operations
+        - *Details*: `git:commit`, `git:history`, `git:diff`, `git:rollback` in `ipc-handlers.ts`
+        - *Files*: `src/main/ipc-handlers.ts`
+        - *Requirements*: US-2
+    - [ ] 6.5. Build CommitDialog component
+        - *Goal*: Modal for entering commit message
+        - *Details*: Shown after save. Input field for message. Confirm triggers `git:commit` IPC.
+        - *Files*: `src/renderer/src/components/editor/CommitDialog.tsx`
+        - *Requirements*: US-2
+    - [ ] 6.6. Build VersionHistory + DiffViewer components
+        - *Goal*: Visual commit timeline with diff view
+        - *Details*: Timeline list of commits (hash, message, date). Click to select. DiffViewer shows side-by-side changes. Rollback button with confirm dialog.
+        - *Files*: `src/renderer/src/components/detail/VersionHistory.tsx`, `DiffViewer.tsx`
+        - *Requirements*: US-2
+
+- [ ] 7. **Quality Analyzer**
+    - [ ] 7.1. Implement quality-analyzer engine
+        - *Goal*: Score skill quality based on 8 checks
+        - *Details*: Pure sync function. Checks: has-name, has-description, description-is-trigger, has-examples, has-pitfalls, has-references, has-memory, markdown-valid. Grade thresholds: A≥85, B≥70, C≥50, D<50.
+        - *Files*: `src/main/quality-analyzer.ts`
+        - *Requirements*: US-3
+    - [ ] 7.2. Register quality IPC handler
+        - *Goal*: Renderer can request quality analysis
+        - *Details*: `quality:analyze` handler reads skill files and calls quality-analyzer
+        - *Files*: `src/main/ipc-handlers.ts`
+        - *Requirements*: US-3
+    - [ ] 7.3. Build QualityScore component
+        - *Goal*: Display grade, score bar, check list with suggestions
+        - *Details*: Letter grade badge (A=green, B=blue, C=yellow, D=red), progress bar, collapsible check list
+        - *Files*: `src/renderer/src/components/detail/QualityScore.tsx`
+        - *Requirements*: US-3
+
+- [ ] 8. **Usage Tracking + Dashboard**
+    - [ ] 8.1. Implement hook scripts
+        - *Goal*: Shell scripts to record skill usage
+        - *Details*: `track-prompt.sh` reads stdin JSON, extracts `/skill-name` from UserPromptSubmit, appends to SQLite via `sqlite3` CLI or writes to a JSONL buffer file
+        - *Files*: `src/main/hooks/track-prompt.sh`
+        - *Requirements*: US-1 (usage ranking)
+    - [ ] 8.2. Implement hook-installer
+        - *Goal*: Install/remove hooks in `~/.claude/settings.json`
+        - *Details*: Read settings.json, merge hook entries, write back. `isHookInstalled` checks if entries exist.
+        - *Files*: `src/main/hook-installer.ts`
+        - *Requirements*: US-1
+    - [ ] 8.3. Implement usage-tracker (SQLite)
+        - *Goal*: Read usage data from SQLite database
+        - *Details*: Create DB + table if not exists. `getUsageStats(days?)` returns ranked list. `getZombieSkills` returns skills unused for 30+ days.
+        - *Files*: `src/main/usage-tracker.ts`
+        - *Requirements*: US-1
+    - [ ] 8.4. Register usage IPC handlers
+        - *Goal*: Renderer can query usage data and manage hook
+        - *Details*: `usage:getStats`, `usage:installHook`, `usage:isHookInstalled`
+        - *Files*: `src/main/ipc-handlers.ts`
+        - *Requirements*: US-1
+    - [ ] 8.5. Build Dashboard + UsageRanking + ZombieSkills components
+        - *Goal*: Usage stats page
+        - *Details*: Table sorted by usage count. Time filter (7d/30d/all). ZombieSkills section highlights unused skills. Hook install banner if not installed.
+        - *Files*: `src/renderer/src/components/dashboard/Dashboard.tsx`, `UsageRanking.tsx`, `ZombieSkills.tsx`
+        - *Requirements*: US-1
+
+- [ ] 9. **New Skill Wizard**
+    - [ ] 9.1. Implement createSkill IPC handler
+        - *Goal*: Create skill folder + files on disk
+        - *Details*: Creates folder, writes SKILL.md from template with filled frontmatter, creates `references/` if requested, runs `git init` + initial commit
+        - *Files*: `src/main/ipc-handlers.ts`
+        - *Requirements*: US-5
+    - [ ] 9.2. Build NewSkillWizard (4-step)
+        - *Goal*: Guided skill creation
+        - *Details*: Step 1: name + scope. Step 2: description (with trigger condition hint). Step 3: examples + pitfalls pre-filled. Step 4: references toggle.
+        - *Files*: `src/renderer/src/components/create/NewSkillWizard.tsx`
+        - *Requirements*: US-5
+
+- [ ] 10. **Skill Deletion**
+    - [ ] 10.1. Implement deleteSkill IPC handler
+        - *Goal*: Soft-delete skill (move to trash)
+        - *Details*: Move skill folder to `~/.quiver/trash/<skill-id>/`. Update config. Support restore.
+        - *Files*: `src/main/ipc-handlers.ts`
+        - *Requirements*: US-6
+
+- [ ] 11. **Import / Export**
+    - [ ] 11.1. Implement exportSkill
+        - *Goal*: Package skill as `.quiver` file
+        - *Details*: Zip skill folder + write `manifest.json` (name, version, quality score, exported date)
+        - *Files*: `src/main/ipc-handlers.ts`
+        - *Requirements*: NFR-3
+    - [ ] 11.2. Implement importSkill
+        - *Goal*: Import `.quiver` file or GitHub URL
+        - *Details*: Unzip, run quality check, check for name conflicts, copy to target scope dir. For GitHub URL: fetch raw zip.
+        - *Files*: `src/main/ipc-handlers.ts`
+        - *Requirements*: NFR-3
+    - [ ] 11.3. Build ImportDialog + ExportDialog
+        - *Goal*: UI for import/export
+        - *Details*: Import: file picker or URL input, shows quality preview before confirming. Export: file save dialog.
+        - *Files*: `src/renderer/src/components/import-export/ImportDialog.tsx`, `ExportDialog.tsx`
+        - *Requirements*: NFR-3
+
+- [ ] 12. **Git Push + Final Polish**
+    - [ ] 12.1. Commit all work and push to GitHub
+        - *Goal*: All code committed and pushed to `github-mrcalpis:mrcalpis/quiver`
+        - *Details*: `git add`, commit with conventional commits, `git push origin main`
+        - *Files*: All
+        - *Requirements*: All
+
+## Task Dependencies
+
+- Task 1 (Init) must complete before all others
+- Task 2 (Scanner) must complete before Task 3 (Skill Tree UI)
+- Task 4 (File Read) must complete before Task 5 (Editor)
+- Task 6 (Git) depends on Task 5 (Editor save flow)
+- Task 7 (Quality) depends on Task 2 (Scanner — needs skill data)
+- Task 8 (Usage) can run in parallel with Tasks 5-7
+- Task 9 (Wizard) depends on Tasks 2, 6, 7
+- Task 10 (Delete) depends on Task 2
+- Task 11 (Import/Export) depends on Tasks 2, 7
+- Tasks 3, 4, 5, 6, 7, 8, 9, 10, 11 can be parallelized after Task 2
+
+## Estimated Timeline
+
+- Task 1 (Init): 2h
+- Task 2 (Scanner): 3h
+- Task 3 (Skill Tree UI): 3h
+- Task 4 (File Read): 1h
+- Task 5 (Monaco Editor): 4h
+- Task 6 (Version Control): 5h
+- Task 7 (Quality Analyzer): 3h
+- Task 8 (Usage Tracking): 4h
+- Task 9 (New Skill Wizard): 3h
+- Task 10 (Deletion): 1h
+- Task 11 (Import/Export): 3h
+- Task 12 (Polish + Push): 1h
+- **Total: ~33h**
