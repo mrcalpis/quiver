@@ -3,6 +3,21 @@ import { useUiStore } from '../../stores/ui-store'
 import SearchBar from './SearchBar'
 import type { Skill } from '../../../../types/skill'
 
+async function handleAddProject(
+  setSkills: (skills: Skill[]) => void,
+  setLoading: (v: boolean) => void
+) {
+  const result = await window.quiver.files.openFolderPicker()
+  const res = result.data as { filePaths: string[]; canceled: boolean }
+  if (res.canceled || !res.filePaths[0]) return
+
+  setLoading(true)
+  await window.quiver.skills.addProject(res.filePaths[0])
+  const refreshed = await window.quiver.skills.scanAll()
+  if (refreshed.data) setSkills(refreshed.data as Skill[])
+  setLoading(false)
+}
+
 function gradeColor(grade: string): string {
   if (grade === 'A') return 'bg-green-500/20 text-green-400'
   if (grade === 'B') return 'bg-blue-500/20 text-blue-400'
@@ -65,7 +80,7 @@ function GroupSection({ label, skills }: { label: string; skills: Skill[] }) {
 }
 
 export default function SkillTree() {
-  const { filteredSkills, isLoading } = useSkillStore()
+  const { filteredSkills, isLoading, setSkills, setLoading } = useSkillStore()
   const { activePanel, setActivePanel } = useUiStore()
 
   const skills = filteredSkills()
@@ -100,23 +115,32 @@ export default function SkillTree() {
       </div>
 
       {/* Bottom actions */}
-      <div className="border-t border-border p-2 flex gap-1">
+      <div className="border-t border-border p-2 space-y-1">
+        <div className="flex gap-1">
+          <button
+            onClick={() => setActivePanel('create')}
+            className="flex-1 text-xs py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
+          >
+            + New Skill
+          </button>
+          <button
+            onClick={() => setActivePanel('dashboard')}
+            className={`px-3 text-xs py-1.5 rounded-md transition-colors ${
+              activePanel === 'dashboard'
+                ? 'bg-secondary text-foreground'
+                : 'text-muted-foreground hover:bg-secondary'
+            }`}
+            title="Usage Dashboard"
+          >
+            📊
+          </button>
+        </div>
         <button
-          onClick={() => setActivePanel('create')}
-          className="flex-1 text-xs py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
+          onClick={() => handleAddProject(setSkills, setLoading)}
+          className="w-full text-xs py-1.5 rounded-md text-muted-foreground hover:bg-secondary transition-colors"
+          title="Add a project folder to scan its .claude/skills/"
         >
-          + New Skill
-        </button>
-        <button
-          onClick={() => setActivePanel('dashboard')}
-          className={`px-3 text-xs py-1.5 rounded-md transition-colors ${
-            activePanel === 'dashboard'
-              ? 'bg-secondary text-foreground'
-              : 'text-muted-foreground hover:bg-secondary'
-          }`}
-          title="Usage Dashboard"
-        >
-          📊
+          + Add Project
         </button>
       </div>
     </div>
