@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { SkillCommit } from '../../../../types/git'
+import type { SkillCommit, DiffResult } from '../../../../types/git'
+import DiffViewer from './DiffViewer'
 
 interface Props {
   skillPath: string
@@ -10,6 +11,8 @@ export default function VersionHistory({ skillPath, onRollback }: Props) {
   const [commits, setCommits] = useState<SkillCommit[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [isRollingBack, setIsRollingBack] = useState(false)
+  const [diff, setDiff] = useState<DiffResult | null>(null)
+  const [isLoadingDiff, setIsLoadingDiff] = useState(false)
 
   useEffect(() => {
     setCommits([])
@@ -17,6 +20,17 @@ export default function VersionHistory({ skillPath, onRollback }: Props) {
       if (res.data) setCommits(res.data as SkillCommit[])
     })
   }, [skillPath])
+
+  const handleShowDiff = async (oid: string) => {
+    if (commits.length < 2) return
+    const idx = commits.findIndex((c) => c.oid === oid)
+    const prevOid = commits[idx + 1]?.oid
+    if (!prevOid) return
+    setIsLoadingDiff(true)
+    const res = await window.quiver.git.diff(skillPath, prevOid, oid)
+    setIsLoadingDiff(false)
+    if (res.data) setDiff(res.data as DiffResult)
+  }
 
   const handleRollback = async () => {
     if (!selected) return
@@ -88,14 +102,25 @@ export default function VersionHistory({ skillPath, onRollback }: Props) {
       </div>
 
       {selected && selected !== commits[0]?.oid && (
-        <button
-          onClick={handleRollback}
-          disabled={isRollingBack}
-          className="mt-2 w-full text-xs py-1.5 rounded-md bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors disabled:opacity-40"
-        >
-          {isRollingBack ? 'Rolling back...' : '↩ Rollback to this version'}
-        </button>
+        <div className="mt-2 flex gap-1">
+          <button
+            onClick={() => handleShowDiff(selected)}
+            disabled={isLoadingDiff}
+            className="flex-1 text-xs py-1.5 rounded-md bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+          >
+            {isLoadingDiff ? 'Loading...' : 'View Diff'}
+          </button>
+          <button
+            onClick={handleRollback}
+            disabled={isRollingBack}
+            className="flex-1 text-xs py-1.5 rounded-md bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors disabled:opacity-40"
+          >
+            {isRollingBack ? 'Rolling back...' : '↩ Rollback'}
+          </button>
+        </div>
       )}
+
+      {diff && <DiffViewer diff={diff} onClose={() => setDiff(null)} />}
     </div>
   )
 }

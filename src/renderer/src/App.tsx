@@ -20,6 +20,7 @@ declare global {
         openFilePicker: (options: unknown) => Promise<{ data?: unknown }>
         openFolderPicker: () => Promise<{ data?: unknown }>
         saveFilePicker: (options: unknown) => Promise<{ data?: unknown }>
+        downloadUrl: (url: string) => Promise<{ data?: string; error?: string }>
       }
       git: {
         commit: (skillPath: string, message: string) => Promise<{ data?: string; error?: string }>

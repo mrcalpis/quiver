@@ -1,7 +1,7 @@
-import { ipcMain, dialog } from 'electron'
-import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, cpSync } from 'fs'
+import { ipcMain, dialog, net } from 'electron'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, cpSync, createWriteStream } from 'fs'
 import { join, basename, dirname } from 'path'
-import { homedir } from 'os'
+import { homedir, tmpdir } from 'os'
 import AdmZip from 'adm-zip'
 
 import { scanGlobalSkills, scanProjectSkills, skillId } from './skill-scanner'
@@ -234,6 +234,26 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('files:saveFilePicker', async (_event, options) => {
     const result = await dialog.showSaveDialog(options as Electron.SaveDialogOptions)
     return { data: result }
+  })
+
+  ipcMain.handle('files:downloadUrl', async (_event, url: string) => {
+    try {
+      const destPath = join(tmpdir(), `quiver-import-${Date.now()}.quiver`)
+      await new Promise<void>((resolve, reject) => {
+        const request = net.request(url)
+        request.on('response', (response) => {
+          const stream = createWriteStream(destPath)
+          response.on('data', (chunk) => stream.write(chunk))
+          response.on('end', () => { stream.end(); resolve() })
+          response.on('error', reject)
+        })
+        request.on('error', reject)
+        request.end()
+      })
+      return { data: destPath }
+    } catch (err) {
+      return { error: String(err) }
+    }
   })
 
   // ── Git ──────────────────────────────────────────────────────────────

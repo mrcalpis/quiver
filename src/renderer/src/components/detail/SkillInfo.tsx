@@ -1,5 +1,6 @@
 import type { Skill } from '../../../../types/skill'
 import { useUiStore } from '../../stores/ui-store'
+import { useSkillStore } from '../../stores/skill-store'
 
 const fileTypeIcon: Record<string, string> = {
   main: '📄',
@@ -16,6 +17,20 @@ interface Props {
 
 export default function SkillInfo({ skill }: Props) {
   const { setShowExportDialog } = useUiStore()
+  const { setSkills, setSelectedSkill } = useSkillStore()
+
+  const handleDelete = async () => {
+    const confirmed = window.confirm(
+      `Delete "${skill.name}"? It will be moved to ~/.quiver/trash and can be restored manually.`
+    )
+    if (!confirmed) return
+    const res = await window.quiver.files.deleteSkill(skill.id)
+    if (!res.error) {
+      const refreshed = await window.quiver.skills.scanAll()
+      if (refreshed.data) setSkills(refreshed.data as never[])
+      setSelectedSkill(null)
+    }
+  }
   const lastModified = new Date(skill.lastModified)
   const folders = new Set(
     skill.files
@@ -67,7 +82,13 @@ export default function SkillInfo({ skill }: Props) {
           onClick={() => setShowExportDialog(true)}
           className="flex-1 text-xs py-1.5 rounded-md bg-secondary text-muted-foreground hover:text-foreground transition-colors"
         >
-          Export .quiver
+          Export
+        </button>
+        <button
+          onClick={handleDelete}
+          className="text-xs px-3 py-1.5 rounded-md text-destructive hover:bg-destructive/10 transition-colors"
+        >
+          Delete
         </button>
       </div>
 

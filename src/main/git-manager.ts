@@ -44,30 +44,79 @@ export async function getHistory(skillPath: string): Promise<SkillCommit[]> {
   }))
 }
 
+async function readBlobSafe(
+  skillPath: string,
+  oid: string,
+  filepath: string
+): Promise<string> {
+  try {
+    const { blob } = await git.readBlob({ fs, dir: skillPath, oid, filepath })
+    return Buffer.from(blob).toString('utf-8')
+  } catch {
+    return ''
+  }
+}
+
+async function listTreeFiles(skillPath: string, oid: string): Promise<string[]> {
+  const files: string[] = []
+  try {
+    const commit = await git.readCommit({ fs, dir: skillPath, oid })
+    const treeOid = commit.commit.tree
+
+    async function walk(treeOid: string, prefix: string) {
+      const { tree } = await git.readTree({ fs, dir: skillPath, oid: treeOid })
+      for (const entry of tree) {
+        const path = prefix ? `${prefix}/${entry.path}` : entry.path
+        if (entry.type === 'tree') {
+          await walk(entry.oid, path)
+        } else {
+          files.push(path)
+        }
+      }
+    }
+
+    await walk(treeOid, '')
+  } catch {
+    // ignore
+  }
+  return files
+}
+
 export async function getDiff(
   skillPath: string,
   oid1: string,
   oid2: string
 ): Promise<DiffResult> {
-  const getContent = async (oid: string): Promise<string> => {
-    try {
-      const { blob } = await git.readBlob({
-        fs,
-        dir: skillPath,
-        oid,
-        filepath: 'SKILL.md'
-      })
-      return Buffer.from(blob).toString('utf-8')
-    } catch {
-      // Try to find any .md file
-      return ''
-    }
+  // Collect all files from both commits
+  const [files1, files2] = await Promise.all([
+    listTreeFiles(skillPath, oid1),
+    listTreeFiles(skillPath, oid2)
+  ])
+  const allFiles = Array.from(new Set([...files1, ...files2]))
+
+  // Build combined old/new content showing all files
+  const parts: Array<{ file: string; old: string; new: string }> = []
+  for (const file of allFiles) {
+    const [old, newC] = await Promise.all([
+      readBlobSafe(skillPath, oid1, file),
+      readBlobSafe(skillPath, oid2, file)
+    ])
+    if (old !== newC) parts.push({ file, old, new: newC })
   }
 
-  const [oldContent, newContent] = await Promise.all([
-    getContent(oid1),
-    getContent(oid2)
-  ])
+  if (parts.length === 0) {
+    // No changes — just return the main file content
+    const mainFile = allFiles.find((f) => f.toUpperCase() === 'SKILL.MD') || allFiles[0] || 'SKILL.md'
+    const [oldContent, newContent] = await Promise.all([
+      readBlobSafe(skillPath, oid1, mainFile),
+      readBlobSafe(skillPath, oid2, mainFile)
+    ])
+    return { oldContent, newContent, hunks: [] }
+  }
+
+  // Combine changed files with headers
+  const oldContent = parts.map((p) => `### ${p.file}\n${p.old}`).join('\n\n')
+  const newContent = parts.map((p) => `### ${p.file}\n${p.new}`).join('\n\n')
 
   return { oldContent, newContent, hunks: [] }
 }

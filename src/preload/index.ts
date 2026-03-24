@@ -17,7 +17,8 @@ const quiverAPI = {
       ipcRenderer.invoke('files:importSkill', srcPath, scope, projectPath),
     openFilePicker: (options: unknown) => ipcRenderer.invoke('files:openFilePicker', options),
     openFolderPicker: () => ipcRenderer.invoke('files:openFolderPicker'),
-    saveFilePicker: (options: unknown) => ipcRenderer.invoke('files:saveFilePicker', options)
+    saveFilePicker: (options: unknown) => ipcRenderer.invoke('files:saveFilePicker', options),
+    downloadUrl: (url: string) => ipcRenderer.invoke('files:downloadUrl', url)
   },
   git: {
     commit: (skillPath: string, message: string) =>
