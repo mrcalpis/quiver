@@ -25,22 +25,24 @@ export default function MarkdownPreview({ content }: Props) {
           p: ({ children }) => (
             <p className="text-sm text-foreground/90 mb-3 leading-relaxed">{children}</p>
           ),
-          code: ({ inline, children, ...props }: { inline?: boolean; children?: React.ReactNode }) =>
-            inline ? (
-              <code
-                className="bg-secondary text-primary text-xs px-1 rounded font-mono"
-                {...props}
-              >
-                {children}
-              </code>
-            ) : (
+          code: ({ children, className, ...props }) => {
+            const isBlock = className?.startsWith('language-')
+            return isBlock ? (
               <code
                 className="block bg-secondary text-foreground text-xs p-3 rounded-md font-mono overflow-x-auto"
                 {...props}
               >
                 {children}
               </code>
-            ),
+            ) : (
+              <code
+                className="bg-secondary text-primary text-xs px-1 rounded font-mono"
+                {...props}
+              >
+                {children}
+              </code>
+            )
+          },
           pre: ({ children }) => <pre className="bg-secondary rounded-md overflow-hidden mb-4">{children}</pre>,
           ul: ({ children }) => <ul className="list-disc list-inside text-sm space-y-1 mb-3">{children}</ul>,
           ol: ({ children }) => <ol className="list-decimal list-inside text-sm space-y-1 mb-3">{children}</ol>,
